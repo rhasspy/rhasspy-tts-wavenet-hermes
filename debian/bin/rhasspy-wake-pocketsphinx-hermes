@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+if [[ -z "${rhasspywake_pocketsphinx_hermes}" ]]; then
+    this_dir="$( cd "$( dirname "$0" )" && pwd )"
+    rhasspywake_pocketsphinx_hermes="${this_dir}/../lib/rhasspywake_pocketsphinx_hermes"
+fi
+
+"${rhasspywake_pocketsphinx_hermes}/rhasspywake_pocketsphinx_hermes" "$@"
