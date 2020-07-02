@@ -1,8 +1,8 @@
-Package: rhasspy-wake-pocketsphinx-hermes
+Package: rhasspy-tts-wavenet-hermes
 Version: ${version}
 Section: utils
 Priority: optional
-Depends: sox
+Depends: flite,curl
 Architecture: ${architecture}
 Maintainer: Michael Hansen
-Description: Hermes MQTT service for Rhasspy wakeword detection with Pocketsphinx
+Description: Hermes MQTT service for Rhasspy TTS using Google Wavenet
