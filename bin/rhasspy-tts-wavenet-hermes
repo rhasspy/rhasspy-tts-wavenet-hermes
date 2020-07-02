@@ -12,4 +12,4 @@ if [[ -d "${venv}" ]]; then
 fi
 
 export PYTHONPATH="${src_dir}:${PYTHONPATH}"
-python3 -m rhasspywake_pocketsphinx_hermes "$@"
+python3 -m rhasspytts_wavenet_hermes "$@"
