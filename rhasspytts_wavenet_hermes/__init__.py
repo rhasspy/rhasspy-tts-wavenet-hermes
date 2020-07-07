@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import typing
 import wave
+from pathlib import Path
 from uuid import uuid4
 
 from google.cloud import texttospeech
@@ -27,11 +28,13 @@ class TtsHermesMqtt(HermesClient):
     def __init__(
         self,
         client,
-        wavenet_dir,
-        voice,
-        gender,
-        sample_rate,
-        language_code,
+        credentials_json: Path,
+        cache_dir: Path,
+        voice: str = "Wavenet-C",
+        gender: str = "FEMALE",
+        sample_rate: int = 22050,
+        language_code: str = "en-US",
+        url: str = "https://texttospeech.googleapis.com/v1/text:synthesize",
         play_command: typing.Optional[str] = None,
         site_ids: typing.Optional[typing.List[str]] = None,
     ):
@@ -39,7 +42,8 @@ class TtsHermesMqtt(HermesClient):
 
         self.subscribe(TtsSay, GetVoices, AudioPlayFinished)
 
-        self.wavenet_dir = wavenet_dir
+        self.credentials_json = credentials_json
+        self.cache_dir = cache_dir
         self.voice = voice
         self.gender = gender
         self.sample_rate = int(sample_rate)
@@ -51,25 +55,10 @@ class TtsHermesMqtt(HermesClient):
         # Seconds added to playFinished timeout
         self.finished_timeout_extra: float = 0.25
 
-        self.wavenet_client = None
-
-        # Find credentials JSON file
-        if os.path.isfile(os.path.join(self.wavenet_dir, "credentials.json")):
-
-            _LOGGER.debug(
-                "Trying credentials at %s",
-                os.path.join(self.wavenet_dir, "credentials.json"),
-            )
-
-            # Set environment var
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(
-                self.wavenet_dir, "credentials.json"
-            )
-
-            self.wavenet_client = texttospeech.TextToSpeechClient()
+        self.wavenet_client: typing.Optional[texttospeech.TextToSpeechClient] = None
 
         # Create cache directory in profile if it doesn't exist
-        os.makedirs(os.path.join(self.wavenet_dir, "cache"), exist_ok=True)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
 
     # -------------------------------------------------------------------------
 
@@ -89,17 +78,24 @@ class TtsHermesMqtt(HermesClient):
         try:
             # Try to pull WAV from cache first
             sentence_hash = self.get_sentence_hash(say.text)
-            cached_wav_path = os.path.join(
-                self.wavenet_dir, "cache", f"{sentence_hash.hexdigest()}.wav"
-            )
+            cached_wav_path = self.cache_dir / f"{sentence_hash.hexdigest()}.wav"
 
-            if os.path.isfile(cached_wav_path):
+            if cached_wav_path.is_file():
                 # Use WAV file from cache
                 _LOGGER.debug("Using WAV from cache: %s", cached_wav_path)
-                with open(cached_wav_path, mode="rb") as cached_wav_file:
-                    wav_bytes = cached_wav_file.read()
+                wav_bytes = cached_wav_path.read_bytes()
 
             if not wav_bytes:
+                # Run text to speech
+                if (not self.wavenet_client) and self.credentials_json.is_file():
+                    _LOGGER.debug("Loading credentials at %s", self.credentials_json)
+
+                    # Set environment var
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(
+                        self.credentials_json.absolute()
+                    )
+
+                    self.wavenet_client = texttospeech.TextToSpeechClient()
 
                 assert self.wavenet_client, "No Wavenet Client"
 

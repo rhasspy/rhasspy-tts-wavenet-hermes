@@ -24,9 +24,11 @@ $ make install
 ## Command-Line Options
 
 ```
-usage: rhasspy-tts-wavenet-hermes [-h] --wavenet-dir WAVENET_DIR --voice VOICE
-                                  --gender GENDER --sample-rate SAMPLE_RATE
-                                  --language-code LANGUAGE_CODE
+usage: rhasspy-tts-wavenet-hermes [-h] --credentials-json CREDENTIALS_JSON
+                                  --cache-dir CACHE_DIR [--voice VOICE]
+                                  [--gender GENDER]
+                                  [--sample-rate SAMPLE_RATE]
+                                  [--language-code LANGUAGE_CODE] [--url URL]
                                   [--play-command PLAY_COMMAND] [--host HOST]
                                   [--port PORT] [--username USERNAME]
                                   [--password PASSWORD] [--tls]
@@ -41,14 +43,18 @@ usage: rhasspy-tts-wavenet-hermes [-h] --wavenet-dir WAVENET_DIR --voice VOICE
 
 optional arguments:
   -h, --help            show this help message and exit
-  --wavenet-dir WAVENET_DIR
-                        Directory of the Google Wavenet cache and credentials
-  --voice VOICE         Chosen voice
-  --gender GENDER       Chosen gender
+  --credentials-json CREDENTIALS_JSON
+                        Path to Google Wavenet credentials JSON file
+  --cache-dir CACHE_DIR
+                        Directory to cache WAV files
+  --voice VOICE         Chosen voice (default: Wavenet-C)
+  --gender GENDER       Chosen gender (default: FEMALE)
   --sample-rate SAMPLE_RATE
-                        Chosen sample rate of the outpt wave sample
+                        Chosen sample rate of the outpt wave sample (default:
+                        22050)
   --language-code LANGUAGE_CODE
-                        Chosen language
+                        Chosen language (default: en-US)
+  --url URL             Synthesize URL (default: v1)
   --play-command PLAY_COMMAND
                         Command to play WAV data from stdin (default: publish
                         playBytes)
