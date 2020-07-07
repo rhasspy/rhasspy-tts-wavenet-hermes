@@ -1,8 +1,0 @@
-Package: rhasspy-tts-wavenet-hermes
-Version: ${version}
-Section: utils
-Priority: optional
-Depends: flite,curl
-Architecture: ${architecture}
-Maintainer: Michael Hansen
-Description: Hermes MQTT service for Rhasspy TTS using Google Wavenet

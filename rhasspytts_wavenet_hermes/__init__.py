@@ -1,21 +1,20 @@
 """Hermes MQTT server for Rhasspy TTS using Google Wavenet"""
-import hashlib
 import asyncio
+import hashlib
+import io
 import logging
 import os
 import shlex
 import subprocess
 import typing
-import io
 import wave
-import json
 from uuid import uuid4
-from google.cloud import texttospeech
 
+from google.cloud import texttospeech
 from rhasspyhermes.audioserver import AudioPlayBytes, AudioPlayError, AudioPlayFinished
 from rhasspyhermes.base import Message
 from rhasspyhermes.client import GeneratorType, HermesClient, TopicArgs
-from rhasspyhermes.tts import GetVoices, TtsError, TtsSay, TtsSayFinished
+from rhasspyhermes.tts import GetVoices, TtsError, TtsSay, TtsSayFinished, Voice, Voices
 
 _LOGGER = logging.getLogger("rhasspytts_wavenet_hermes")
 
@@ -57,10 +56,15 @@ class TtsHermesMqtt(HermesClient):
         # Find credentials JSON file
         if os.path.isfile(os.path.join(self.wavenet_dir, "credentials.json")):
 
-            _LOGGER.debug("Trying credentials at %s", os.path.join(self.wavenet_dir, "credentials.json"))
+            _LOGGER.debug(
+                "Trying credentials at %s",
+                os.path.join(self.wavenet_dir, "credentials.json"),
+            )
 
             # Set environment var
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(self.wavenet_dir, "credentials.json")
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(
+                self.wavenet_dir, "credentials.json"
+            )
 
             self.wavenet_client = texttospeech.TextToSpeechClient()
 
@@ -116,11 +120,16 @@ class TtsHermesMqtt(HermesClient):
                 )
 
                 audio_config = texttospeech.AudioConfig(
-                    audio_encoding=texttospeech.AudioEncoding.LINEAR16, sample_rate_hertz=self.sample_rate
+                    audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=self.sample_rate,
                 )
 
                 response = self.wavenet_client.synthesize_speech(
-                    request={"input": synthesis_input, "voice": voice_params, "audio_config": audio_config}
+                    request={
+                        "input": synthesis_input,
+                        "voice": voice_params,
+                        "audio_config": audio_config,
+                    }
                 )
                 wav_bytes = response.audio_content
 
@@ -167,7 +176,7 @@ class TtsHermesMqtt(HermesClient):
 
                 try:
                     # Wait for audio to finished playing or timeout
-                    wav_duration = self.get_wav_duration(wav_bytes)
+                    wav_duration = TtsHermesMqtt.get_wav_duration(wav_bytes)
                     wav_timeout = wav_duration + self.finished_timeout_extra
 
                     _LOGGER.debug("Waiting for play finished (timeout=%s)", wav_timeout)
@@ -187,6 +196,17 @@ class TtsHermesMqtt(HermesClient):
             yield TtsSayFinished(
                 id=say.id, site_id=say.site_id, session_id=say.session_id
             )
+
+    # -------------------------------------------------------------------------
+
+    async def handle_get_voices(
+        self, get_voices: GetVoices
+    ) -> typing.AsyncIterable[Voices]:
+        """Publish list of available voices. Currently does nothing."""
+        voices: typing.List[Voice] = []
+
+        # Publish response
+        yield Voices(voices=voices, id=get_voices.id, site_id=get_voices.site_id)
 
     # -------------------------------------------------------------------------
 
@@ -231,7 +251,8 @@ class TtsHermesMqtt(HermesClient):
 
         return m
 
-    def get_wav_duration(self, wav_bytes: bytes) -> float:
+    @staticmethod
+    def get_wav_duration(wav_bytes: bytes) -> float:
         """Return the real-time duration of a WAV file"""
         with io.BytesIO(wav_bytes) as wav_buffer:
             wav_file: wave.Wave_read = wave.open(wav_buffer, "rb")

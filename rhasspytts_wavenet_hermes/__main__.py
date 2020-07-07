@@ -17,30 +17,18 @@ def main():
     """Main method."""
     parser = argparse.ArgumentParser(prog="rhasspy-tts-wavenet-hermes")
     parser.add_argument(
-        "--wavenet_dir",
+        "--wavenet-dir",
         required=True,
         help="Directory of the Google Wavenet cache and credentials",
     )
+    parser.add_argument("--voice", required=True, help="Chosen voice")
+    parser.add_argument("--gender", required=True, help="Chosen gender")
     parser.add_argument(
-        "--voice",
-        required=True,
-        help="Chosen voice",
-    )
-    parser.add_argument(
-        "--gender",
-        required=True,
-        help="Chosen gender",
-    )
-    parser.add_argument(
-        "--sample_rate",
+        "--sample-rate",
         required=True,
         help="Chosen sample rate of the outpt wave sample",
     )
-    parser.add_argument(
-        "--language_code",
-        required=True,
-        help="Chosen language",
-    )
+    parser.add_argument("--language-code", required=True, help="Chosen language")
     parser.add_argument(
         "--play-command",
         help="Command to play WAV data from stdin (default: publish playBytes)",
@@ -83,4 +71,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
