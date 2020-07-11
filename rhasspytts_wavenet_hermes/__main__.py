@@ -26,24 +26,13 @@ def main():
         "--cache-dir", required=True, help="Directory to cache WAV files"
     )
     parser.add_argument(
-        "--voice", default="Wavenet-C", help="Chosen voice (default: Wavenet-C)"
-    )
-    parser.add_argument(
-        "--gender", default="FEMALE", help="Chosen gender (default: FEMALE)"
+        "--voice", default="en-US-Wavenet-C", help="Chosen voice (default: Wavenet-C)"
     )
     parser.add_argument(
         "--sample-rate",
         default=22050,
         type=int,
         help="Chosen sample rate of the outpt wave sample (default: 22050)",
-    )
-    parser.add_argument(
-        "--language-code", default="en-US", help="Chosen language (default: en-US)"
-    )
-    parser.add_argument(
-        "--url",
-        default="https://texttospeech.googleapis.com/v1/text:synthesize",
-        help="Synthesize URL (default: v1)",
     )
     parser.add_argument(
         "--play-command",
@@ -66,10 +55,7 @@ def main():
         credentials_json=args.credentials_json,
         cache_dir=args.cache_dir,
         voice=args.voice,
-        gender=args.gender,
         sample_rate=args.sample_rate,
-        language_code=args.language_code,
-        url=args.url,
         play_command=args.play_command,
         site_ids=args.site_id,
     )

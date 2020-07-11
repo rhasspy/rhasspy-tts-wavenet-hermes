@@ -30,11 +30,8 @@ class TtsHermesMqtt(HermesClient):
         client,
         credentials_json: Path,
         cache_dir: Path,
-        voice: str = "Wavenet-C",
-        gender: str = "FEMALE",
+        voice: str = "en-US-Wavenet-C",
         sample_rate: int = 22050,
-        language_code: str = "en-US",
-        url: str = "https://texttospeech.googleapis.com/v1/text:synthesize",
         play_command: typing.Optional[str] = None,
         site_ids: typing.Optional[typing.List[str]] = None,
     ):
@@ -45,9 +42,7 @@ class TtsHermesMqtt(HermesClient):
         self.credentials_json = credentials_json
         self.cache_dir = cache_dir
         self.voice = voice
-        self.gender = gender
         self.sample_rate = int(sample_rate)
-        self.language_code = language_code
         self.play_command = play_command
 
         self.play_finished_events: typing.Dict[typing.Optional[str], asyncio.Event] = {}
@@ -59,6 +54,16 @@ class TtsHermesMqtt(HermesClient):
 
         # Create cache directory in profile if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+        if (not self.wavenet_client) and self.credentials_json.is_file():
+            _LOGGER.debug("Loading credentials at %s", self.credentials_json)
+
+            # Set environment var
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(
+                self.credentials_json.absolute()
+            )
+
+            self.wavenet_client = texttospeech.TextToSpeechClient()
 
     # -------------------------------------------------------------------------
 
@@ -87,32 +92,19 @@ class TtsHermesMqtt(HermesClient):
 
             if not wav_bytes:
                 # Run text to speech
-                if (not self.wavenet_client) and self.credentials_json.is_file():
-                    _LOGGER.debug("Loading credentials at %s", self.credentials_json)
-
-                    # Set environment var
-                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(
-                        self.credentials_json.absolute()
-                    )
-
-                    self.wavenet_client = texttospeech.TextToSpeechClient()
-
                 assert self.wavenet_client, "No Wavenet Client"
 
                 _LOGGER.debug(
-                    "Calling Wavenet (lang=%s, voice=%s, gender=%s, rate=%s)",
-                    self.language_code,
+                    "Calling Wavenet (voice=%s, rate=%s)",
                     self.voice,
-                    self.gender,
                     self.sample_rate,
                 )
 
                 synthesis_input = texttospeech.SynthesisInput(text=say.text)
 
                 voice_params = texttospeech.VoiceSelectionParams(
-                    language_code=self.language_code,
-                    name=self.language_code + "-" + self.voice,
-                    ssml_gender=texttospeech.SsmlVoiceGender[self.gender],
+                    language_code = '-'.join(self.voice.split('-')[:2]),
+                    name=self.voice,
                 )
 
                 audio_config = texttospeech.AudioConfig(
@@ -197,10 +189,24 @@ class TtsHermesMqtt(HermesClient):
 
     async def handle_get_voices(
         self, get_voices: GetVoices
-    ) -> typing.AsyncIterable[Voices]:
-        """Publish list of available voices. Currently does nothing."""
+    ) -> typing.AsyncIterable[typing.Union[Voices, TtsError]]:
+        """Publish list of available voices."""
         voices: typing.List[Voice] = []
+        try:
+            if self.wavenet_client:
+                response = self.wavenet_client.list_voices()
+                voicelist = sorted(response.voices, key=lambda voice: voice.name)
+                for item in voicelist:
+                  voice = Voice(voice_id=item.name)
+                  voice.description = texttospeech.SsmlVoiceGender(item.ssml_gender).name
+                  voices.append(voice)
 
+        except Exception as e:
+            _LOGGER.exception("handle_get_voices")
+            yield TtsError(
+                error=str(e), context=get_voices.id, site_id=get_voices.site_id
+            )
+            
         # Publish response
         yield Voices(voices=voices, id=get_voices.id, site_id=get_voices.site_id)
 
@@ -237,10 +243,8 @@ class TtsHermesMqtt(HermesClient):
             "_".join(
                 [
                     sentence,
-                    self.language_code + "-" + self.voice,
-                    self.gender,
+                    self.voice,
                     str(self.sample_rate),
-                    self.language_code,
                 ]
             ).encode("utf-8")
         )
