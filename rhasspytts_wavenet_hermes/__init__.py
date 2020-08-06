@@ -107,7 +107,10 @@ class TtsHermesMqtt(HermesClient):
                     self.sample_rate,
                 )
 
-                synthesis_input = texttospeech.SynthesisInput(text=say.text)
+                if say.text.startswith('<speak>'):
+                    synthesis_input = texttospeech.SynthesisInput(ssml=say.text)
+                else:
+                    synthesis_input = texttospeech.SynthesisInput(text=say.text)
 
                 voice_params = texttospeech.VoiceSelectionParams(
                     language_code=self.language_code,
