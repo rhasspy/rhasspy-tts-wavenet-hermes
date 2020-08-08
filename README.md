@@ -26,9 +26,7 @@ $ make install
 ```
 usage: rhasspy-tts-wavenet-hermes [-h] --credentials-json CREDENTIALS_JSON
                                   --cache-dir CACHE_DIR [--voice VOICE]
-                                  [--gender GENDER]
                                   [--sample-rate SAMPLE_RATE]
-                                  [--language-code LANGUAGE_CODE] [--url URL]
                                   [--play-command PLAY_COMMAND] [--host HOST]
                                   [--port PORT] [--username USERNAME]
                                   [--password PASSWORD] [--tls]
@@ -47,14 +45,10 @@ optional arguments:
                         Path to Google Wavenet credentials JSON file
   --cache-dir CACHE_DIR
                         Directory to cache WAV files
-  --voice VOICE         Chosen voice (default: Wavenet-C)
-  --gender GENDER       Chosen gender (default: FEMALE)
+  --voice VOICE         Chosen voice (default: en-US-Wavenet-C)
   --sample-rate SAMPLE_RATE
                         Chosen sample rate of the outpt wave sample (default:
                         22050)
-  --language-code LANGUAGE_CODE
-                        Chosen language (default: en-US)
-  --url URL             Synthesize URL (default: v1)
   --play-command PLAY_COMMAND
                         Command to play WAV data from stdin (default: publish
                         playBytes)
