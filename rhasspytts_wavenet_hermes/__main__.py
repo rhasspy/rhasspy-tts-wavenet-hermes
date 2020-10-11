@@ -26,7 +26,9 @@ def main():
         "--cache-dir", required=True, help="Directory to cache WAV files"
     )
     parser.add_argument(
-        "--voice", default="en-US-Wavenet-C", help="Chosen voice (default: en-US-Wavenet-C)"
+        "--voice",
+        default="en-US-Wavenet-C",
+        help="Chosen voice (default: en-US-Wavenet-C)",
     )
     parser.add_argument(
         "--sample-rate",

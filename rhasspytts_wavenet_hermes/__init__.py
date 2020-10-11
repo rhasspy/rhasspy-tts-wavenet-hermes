@@ -84,30 +84,29 @@ class TtsHermesMqtt(HermesClient):
             # Try to pull WAV from cache first
             sentence_hash = self.get_sentence_hash(say.text)
             cached_wav_path = self.cache_dir / f"{sentence_hash.hexdigest()}.wav"
+            from_cache = False
 
             if cached_wav_path.is_file():
                 # Use WAV file from cache
                 _LOGGER.debug("Using WAV from cache: %s", cached_wav_path)
                 wav_bytes = cached_wav_path.read_bytes()
+                from_cache = True
 
             if not wav_bytes:
                 # Run text to speech
                 assert self.wavenet_client, "No Wavenet Client"
 
                 _LOGGER.debug(
-                    "Calling Wavenet (voice=%s, rate=%s)",
-                    self.voice,
-                    self.sample_rate,
+                    "Calling Wavenet (voice=%s, rate=%s)", self.voice, self.sample_rate
                 )
 
-                if say.text.startswith('<speak>'):
+                if say.text.startswith("<speak>"):
                     synthesis_input = texttospeech.SynthesisInput(ssml=say.text)
                 else:
                     synthesis_input = texttospeech.SynthesisInput(text=say.text)
 
                 voice_params = texttospeech.VoiceSelectionParams(
-                    language_code = '-'.join(self.voice.split('-')[:2]),
-                    name=self.voice,
+                    language_code="-".join(self.voice.split("-")[:2]), name=self.voice
                 )
 
                 audio_config = texttospeech.AudioConfig(
@@ -127,53 +126,51 @@ class TtsHermesMqtt(HermesClient):
             assert wav_bytes, "No WAV data received"
             _LOGGER.debug("Got %s byte(s) of WAV data", len(wav_bytes))
 
-            if wav_bytes:
-                finished_event = asyncio.Event()
+            finished_event = asyncio.Event()
 
-                # Play WAV
-                if self.play_command:
-                    try:
-                        # Play locally
-                        play_command = shlex.split(
-                            self.play_command.format(lang=say.lang)
-                        )
-                        _LOGGER.debug(play_command)
+            # Play WAV
+            if self.play_command:
+                try:
+                    # Play locally
+                    play_command = shlex.split(self.play_command.format(lang=say.lang))
+                    _LOGGER.debug(play_command)
 
-                        subprocess.run(play_command, input=wav_bytes, check=True)
+                    subprocess.run(play_command, input=wav_bytes, check=True)
 
-                        # Don't wait for playFinished
-                        finished_event.set()
-                    except Exception as e:
-                        _LOGGER.exception("play_command")
-                        yield AudioPlayError(
-                            error=str(e),
-                            context=say.id,
-                            site_id=say.site_id,
-                            session_id=say.session_id,
-                        )
-                else:
-                    # Publish playBytes
-                    request_id = say.id or str(uuid4())
-                    self.play_finished_events[request_id] = finished_event
-
-                    yield (
-                        AudioPlayBytes(wav_bytes=wav_bytes),
-                        {"site_id": say.site_id, "request_id": request_id},
+                    # Don't wait for playFinished
+                    finished_event.set()
+                except Exception as e:
+                    _LOGGER.exception("play_command")
+                    yield AudioPlayError(
+                        error=str(e),
+                        context=say.id,
+                        site_id=say.site_id,
+                        session_id=say.session_id,
                     )
+            else:
+                # Publish playBytes
+                request_id = say.id or str(uuid4())
+                self.play_finished_events[request_id] = finished_event
 
-                # Save to cache
+                yield (
+                    AudioPlayBytes(wav_bytes=wav_bytes),
+                    {"site_id": say.site_id, "request_id": request_id},
+                )
+
+            # Save to cache
+            if not from_cache:
                 with open(cached_wav_path, "wb") as cached_wav_file:
                     cached_wav_file.write(wav_bytes)
 
-                try:
-                    # Wait for audio to finished playing or timeout
-                    wav_duration = TtsHermesMqtt.get_wav_duration(wav_bytes)
-                    wav_timeout = wav_duration + self.finished_timeout_extra
+            try:
+                # Wait for audio to finished playing or timeout
+                wav_duration = TtsHermesMqtt.get_wav_duration(wav_bytes)
+                wav_timeout = wav_duration + self.finished_timeout_extra
 
-                    _LOGGER.debug("Waiting for play finished (timeout=%s)", wav_timeout)
-                    await asyncio.wait_for(finished_event.wait(), timeout=wav_timeout)
-                except asyncio.TimeoutError:
-                    _LOGGER.warning("Did not receive playFinished before timeout")
+                _LOGGER.debug("Waiting for play finished (timeout=%s)", wav_timeout)
+                await asyncio.wait_for(finished_event.wait(), timeout=wav_timeout)
+            except asyncio.TimeoutError:
+                _LOGGER.warning("Did not receive playFinished before timeout")
 
         except Exception as e:
             _LOGGER.exception("handle_say")
@@ -200,16 +197,18 @@ class TtsHermesMqtt(HermesClient):
                 response = self.wavenet_client.list_voices()
                 voicelist = sorted(response.voices, key=lambda voice: voice.name)
                 for item in voicelist:
-                  voice = Voice(voice_id=item.name)
-                  voice.description = texttospeech.SsmlVoiceGender(item.ssml_gender).name
-                  voices.append(voice)
+                    voice = Voice(voice_id=item.name)
+                    voice.description = texttospeech.SsmlVoiceGender(
+                        item.ssml_gender
+                    ).name
+                    voices.append(voice)
 
         except Exception as e:
             _LOGGER.exception("handle_get_voices")
             yield TtsError(
                 error=str(e), context=get_voices.id, site_id=get_voices.site_id
             )
-            
+
         # Publish response
         yield Voices(voices=voices, id=get_voices.id, site_id=get_voices.site_id)
 
@@ -243,13 +242,7 @@ class TtsHermesMqtt(HermesClient):
         """Get hash for cache."""
         m = hashlib.md5()
         m.update(
-            "_".join(
-                [
-                    sentence,
-                    self.voice,
-                    str(self.sample_rate),
-                ]
-            ).encode("utf-8")
+            "_".join([sentence, self.voice, str(self.sample_rate)]).encode("utf-8")
         )
 
         return m

@@ -2,5 +2,5 @@
 !pyinstaller/dist
 !debian/bin
 !requirements.txt
-!rhasspytts_wavet_hermes/*.py
+!rhasspytts_wavenet_hermes/*.py
 !etc/
